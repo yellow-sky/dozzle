@@ -76,10 +76,12 @@ const actions = {
   },
   UPDATE_CONTAINER({ commit, getters: { allContainersById } }, event) {
     switch (event.name) {
-      case "die":
+      case "die": {
         const container = allContainersById[event.actorId];
         commit("UPDATE_CONTAINER", { container, data: { state: "exited" } });
         break;
+      }
+
       default:
     }
   },

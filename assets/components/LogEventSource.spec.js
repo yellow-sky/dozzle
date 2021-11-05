@@ -1,7 +1,6 @@
+import { createLocalVue, mount } from "@vue/test-utils";
+import EventSource, { sources } from "eventsourcemock";
 import debounce from "lodash.debounce";
-import EventSource from "eventsourcemock";
-import { sources } from "eventsourcemock";
-import { shallowMount, mount, createLocalVue } from "@vue/test-utils";
 import Vuex from "vuex";
 import LogEventSource from "./LogEventSource.vue";
 import LogViewer from "./LogViewer.vue";
@@ -32,7 +31,7 @@ describe("<LogEventSource />", () => {
     const localVue = createLocalVue();
     localVue.use(Vuex);
 
-    localVue.component("log-viewer", LogViewer);
+    localVue.component("LogViewer", LogViewer);
 
     const state = { searchFilter, settings: { size: "medium", showTimestamp: true, hourStyle } };
     const getters = {
@@ -86,7 +85,7 @@ describe("<LogEventSource />", () => {
       data: `2019-06-12T10:55:42.459034602Z "This is a message."`,
     });
 
-    const [message, _] = wrapper.vm.messages;
+    const [message] = wrapper.vm.messages;
     const { key, ...messageWithoutKey } = message;
 
     expect(key).toBe("2019-06-12T10:55:42.459034602Z");
@@ -103,7 +102,7 @@ describe("<LogEventSource />", () => {
     sources["/api/logs/stream?id=abc&lastEventId="].emitOpen();
     sources["/api/logs/stream?id=abc&lastEventId="].emitMessage({ data: `2020-04-27T12:35:43.272974324+02:00 xxxxx` });
 
-    const [message, _] = wrapper.vm.messages;
+    const [message] = wrapper.vm.messages;
     const { key, ...messageWithoutKey } = message;
 
     expect(key).toBe("2020-04-27T12:35:43.272974324+02:00");
@@ -121,7 +120,7 @@ describe("<LogEventSource />", () => {
     sources["/api/logs/stream?id=abc&lastEventId="].emitMessage({
       data: `2019-06-12T10:55:42.459034602Z "This is a message."`,
     });
-    const [message, _] = wrapper.findComponent(LogViewer).vm.messages;
+    const [message] = wrapper.findComponent(LogViewer).vm.messages;
 
     const { key, ...messageWithoutKey } = message;
 
