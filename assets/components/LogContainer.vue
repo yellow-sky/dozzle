@@ -6,6 +6,9 @@
           <container-title :container="container" @close="$emit('close')" />
         </div>
         <div class="column is-narrow is-paddingless">
+          <container-control :id="container.id" />
+        </div>
+        <div class="column is-narrow is-paddingless">
           <container-stat :stat="container.stat" :state="container.state" v-if="container.stat" />
         </div>
 
@@ -27,6 +30,7 @@
 import { ref, toRefs } from "vue";
 import LogViewerWithSource from "./LogViewerWithSource.vue";
 import { useContainerStore } from "@/stores/container";
+import ContainerControl from "@/components/ContainerControl.vue";
 
 const props = defineProps({
   id: {

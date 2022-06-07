@@ -58,6 +58,8 @@ func createRouter(h *handler) *mux.Router {
 	s.Handle("/api/logs/download", authorizationRequired(h.downloadLogs))
 	s.Handle("/api/logs", authorizationRequired(h.fetchLogsBetweenDates))
 	s.Handle("/api/events/stream", authorizationRequired(h.streamEvents))
+	s.Handle("/api/container/restart", authorizationRequired(h.restartContainer))
+	s.Handle("/api/container/image/pull", authorizationRequired(h.pullContainerImage))
 	s.HandleFunc("/api/validateCredentials", h.validateCredentials)
 	s.Handle("/logout", authorizationRequired(h.clearSession))
 	s.Handle("/version", authorizationRequired(h.version))

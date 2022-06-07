@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -28,6 +29,8 @@ type dockerProxy interface {
 	Events(context.Context, types.EventsOptions) (<-chan events.Message, <-chan error)
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerStats(ctx context.Context, containerID string, stream bool) (types.ContainerStats, error)
+	ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error
+	ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error)
 }
 
 // Client is a proxy around the docker client
@@ -38,6 +41,8 @@ type Client interface {
 	Events(context.Context) (<-chan ContainerEvent, <-chan error)
 	ContainerLogsBetweenDates(context.Context, string, time.Time, time.Time) (io.ReadCloser, error)
 	ContainerStats(context.Context, string, chan<- ContainerStat) error
+	ContainerRestart(context.Context, string, *time.Duration) error
+	ContainerImagePull(context.Context, string, *time.Duration) ([]byte, error)
 }
 
 // NewClientWithFilters creates a new instance of Client with docker filters
@@ -240,4 +245,25 @@ func (d *dockerClient) ContainerLogsBetweenDates(ctx context.Context, id string,
 	}
 
 	return newLogReader(reader, containerJSON.Config.Tty), nil
+}
+
+func (d *dockerClient) ContainerRestart(ctx context.Context, id string, timeout *time.Duration) error {
+	//TODO implement me
+	cl, _ := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	return cl.ContainerRestart(ctx, id, timeout)
+}
+
+func (d *dockerClient) ContainerImagePull(ctx context.Context, id string, timeout *time.Duration) ([]byte, error) {
+	inspect, err := d.cli.ContainerInspect(ctx, id)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	out, err := d.cli.ImagePull(ctx, inspect.Config.Image, types.ImagePullOptions{})
+	if err == nil && out != nil {
+		defer out.Close()
+		logBytes, _ := ioutil.ReadAll(out)
+		return logBytes, err
+	}
+	return []byte{}, err
 }
