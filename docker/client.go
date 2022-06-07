@@ -248,9 +248,7 @@ func (d *dockerClient) ContainerLogsBetweenDates(ctx context.Context, id string,
 }
 
 func (d *dockerClient) ContainerRestart(ctx context.Context, id string, timeout *time.Duration) error {
-	//TODO implement me
-	cl, _ := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
-	return cl.ContainerRestart(ctx, id, timeout)
+	return d.cli.ContainerRestart(ctx, id, timeout)
 }
 
 func (d *dockerClient) ContainerImagePull(ctx context.Context, id string, timeout *time.Duration) ([]byte, error) {
