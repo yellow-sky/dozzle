@@ -22,30 +22,18 @@
 </template>
 
 <script lang="ts" setup>
-import hotkeys from "hotkeys-js";
-
-import { search } from "@/composables/settings";
-import { useSearchFilter } from "@/composables/search";
-import { ref, nextTick, onMounted, onUnmounted } from "vue";
-
 const input = ref<HTMLInputElement>();
 const { searchFilter, showSearch, resetSearch } = useSearchFilter();
 
-onMounted(() => {
-  hotkeys("command+f, ctrl+f", (event, handler) => {
+onKeyStroke("f", (e) => {
+  if (e.ctrlKey || e.metaKey) {
     showSearch.value = true;
     nextTick(() => input.value?.focus() || input.value?.select());
-    event.preventDefault();
-  });
-  hotkeys("esc", () => resetSearch());
+    e.preventDefault();
+  }
 });
 
-onUnmounted(() => {
-  searchFilter.value = "";
-  showSearch.value = false;
-  hotkeys.unbind("command+f, ctrl+f");
-  hotkeys.unbind("esc");
-});
+onUnmounted(() => resetSearch());
 </script>
 
 <style lang="scss" scoped>

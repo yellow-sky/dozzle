@@ -15,22 +15,24 @@ jobs:
         uses: actions/checkout@v3
       - name: Install Node
         uses: actions/setup-node@v3
-      - name: Install pnpm
-        uses: pnpm/action-setup@v2.2.2
         with:
-          version: 6.20.1
+          node-version: latest
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7.26.0
       - name: Install dependencies
         run: pnpm install
       - name: Run Tests
-        run: pnpm run test
+        run: pnpm run test -- --outputTruncateLength=500
   go-test:
     name: Go Tests
     runs-on: ubuntu-latest
     steps:
       - name: Install Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.18.x
+          go-version: 1.19.x
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Run Go Tests with Coverage
@@ -43,8 +45,19 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2.5.0
+      - name: Login to DockerHub
+        if: ${{ !github.event.repository.fork && !github.event.pull_request.head.repo.fork }}
+        uses: docker/login-action@v2.1.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build images
-        run: docker-compose -f e2e/docker-compose.yml build
+        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f e2e/docker-compose.yml build --build-arg BUILDKIT_INLINE_CACHE=1
+      - name: Push images
+        if: ${{ !github.event.repository.fork && !github.event.pull_request.head.repo.fork }}
+        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f e2e/docker-compose.yml push
       - name: Set commit message for push
         if: github.event_name == 'push'
         run: |
@@ -58,4 +71,4 @@ jobs:
           git log -1 --pretty=%B ${{github.event.pull_request.head.sha}} >> $GITHUB_ENV
           echo 'EOF' >> $GITHUB_ENV
       - name: Run tests
-        run: docker-compose -f e2e/docker-compose.yml up --build --force-recreate --exit-code-from cypress
+        run: COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 docker compose -f e2e/docker-compose.yml up --build --force-recreate --exit-code-from cypress

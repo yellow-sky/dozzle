@@ -1,11 +1,11 @@
-FROM cypress/included:10.0.2
+FROM cypress/included:12.8.1
 
-RUN apt install curl && curl -f https://get.pnpm.io/v6.16.js | node - add --global pnpm
+RUN npm i -g pnpm
 
 WORKDIR /e2e
 
 COPY pnpm-lock.yaml ./
 RUN pnpm fetch
 
-COPY package.json ./
-RUN pnpm install -r --offline
+COPY package.json tsconfig.json ./
+RUN pnpm install --offline

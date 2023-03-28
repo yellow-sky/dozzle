@@ -2,7 +2,7 @@
   <aside>
     <div class="columns is-marginless is-gapless is-mobile is-vcentered">
       <div class="column is-narrow">
-        <router-link :to="{ name: 'default' }">
+        <router-link :to="{ name: 'index' }">
           <svg class="logo">
             <use href="#logo"></use>
           </svg>
@@ -24,10 +24,44 @@
       </div>
     </div>
 
-    <p class="menu-label is-hidden-mobile" :class="{ 'is-active': showNav }">Containers</p>
+    <div class="menu-label level is-mobile is-hidden-mobile" :class="{ 'is-active': showNav }">
+      <div class="level-item has-text-centered">
+        <div>
+          <button class="button is-small is-rounded" @click="$emit('search')" :title="$t('tooltip.search')">
+            <span class="icon">
+              <mdi-light-magnify />
+            </span>
+          </button>
+        </div>
+      </div>
+      <div class="level-item has-text-centered">
+        <div>
+          <router-link :to="{ name: 'settings' }" active-class="is-active" class="button is-small is-rounded">
+            <span class="icon">
+              <mdi-light-cog />
+            </span>
+          </router-link>
+        </div>
+      </div>
+      <div class="level-item has-text-centered" v-if="secured">
+        <div>
+          <a class="button is-small is-rounded" :href="`${base}/logout`" :title="$t('button.logout')">
+            <span class="icon">
+              <mdi-light-logout />
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <p class="menu-label is-hidden-mobile" :class="{ 'is-active': showNav }">{{ $t("label.containers") }}</p>
     <ul class="menu-list is-hidden-mobile" :class="{ 'is-active': showNav }">
       <li v-for="item in visibleContainers" :key="item.id">
-        <router-link :to="{ name: 'container', params: { id: item.id } }" active-class="is-active" :title="item.name">
+        <router-link
+          :to="{ name: 'container-id', params: { id: item.id } }"
+          active-class="is-active"
+          :title="item.name"
+        >
           <div class="is-ellipsis">
             {{ item.name }}
           </div>
@@ -38,19 +72,15 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, watch } from "vue";
-import { useContainerStore } from "@/stores/container";
-import { storeToRefs } from "pinia";
-import { useRoute } from "vue-router";
-
+const { base, secured } = config;
 const store = useContainerStore();
 const route = useRoute();
 const { visibleContainers, allContainersById } = storeToRefs(store);
 
-const showNav = ref(false);
+let showNav = $ref(false);
 
 watch(route, () => {
-  showNav.value = false;
+  showNav = false;
 });
 </script>
 <style scoped lang="scss">
@@ -63,6 +93,10 @@ aside {
   z-index: 10;
   max-height: 100vh;
   overflow: auto;
+
+  .level.is-hidden-mobile.is-active {
+    display: flex !important;
+  }
 
   .menu-label {
     margin-top: 1em;

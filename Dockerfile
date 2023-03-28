@@ -1,27 +1,29 @@
 # Build assets
-FROM node:18-alpine as node
+FROM --platform=$BUILDPLATFORM node:19-alpine as node
 
-RUN apk add --no-cache git openssh make g++ util-linux python3 && npm install -g pnpm
-
+RUN npm install -g pnpm
 
 WORKDIR /build
 
 # Install dependencies from lock file
-COPY pnpm-lock.yaml ./
-RUN pnpm fetch --prod
+COPY pnpm-*.yaml ./
+RUN pnpm fetch --ignore-scripts --no-optional
 
-# Copy files
-COPY package.json .* vite.config.ts index.html ./
+# Copy package.json and install dependencies
+COPY package.json ./
+RUN pnpm install --offline --ignore-scripts --no-optional
 
-# Copy assets to build
+# Copy assets and translations to build
+COPY .* vite.config.ts index.html ./
 COPY assets ./assets
+COPY locales ./locales
 
-# Install dependencies
-RUN pnpm install -r --offline --prod --ignore-scripts && pnpm build
+# Build assets
+RUN pnpm build
 
-FROM golang:1.18.3-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.20.2-alpine AS builder
 
-RUN apk add --no-cache git ca-certificates && mkdir /dozzle
+RUN apk add --no-cache ca-certificates && mkdir /dozzle
 
 WORKDIR /dozzle
 
@@ -34,15 +36,18 @@ COPY --from=node /build/dist ./dist
 
 # Copy all other files
 COPY analytics ./analytics
+COPY healthcheck ./healthcheck
 COPY docker ./docker
 COPY web ./web
 COPY main.go ./
 
 # Args
 ARG TAG=dev
+ARG TARGETOS TARGETARCH
 
 # Build binary
-RUN CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$TAG"  -o dozzle
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH CGO_ENABLED=0 go build -ldflags "-s -w -X main.version=$TAG"  -o dozzle
+
 
 FROM scratch
 

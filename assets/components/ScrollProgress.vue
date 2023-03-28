@@ -18,21 +18,10 @@
 </template>
 
 <script lang="ts" setup>
-import { useContainerStore } from "@/stores/container";
-import { useScroll } from "@vueuse/core";
-import { storeToRefs } from "pinia";
-import { onMounted, ref, watch, watchPostEffect } from "vue";
-
-const props = defineProps({
-  indeterminate: {
-    default: false,
-    type: Boolean,
-  },
-  autoHide: {
-    default: true,
-    type: Boolean,
-  },
-});
+const { indeterminate = false, autoHide = false } = defineProps<{
+  indeterminate?: boolean;
+  autoHide?: boolean;
+}>();
 
 const scrollProgress = ref(0);
 const animation = ref({ cancel: () => {} });
@@ -59,7 +48,7 @@ watchPostEffect(() => {
       : (scrollElement.value as HTMLElement);
   scrollProgress.value = scrollY.value / (parent.scrollHeight - parent.clientHeight);
   animation.value.cancel();
-  if (props.autoHide && root.value) {
+  if (autoHide && root.value) {
     animation.value = root.value.animate(
       { opacity: [1, 0] },
       {

@@ -16,7 +16,12 @@
 
     <div class="is-scrollbar-notification">
       <transition name="fade">
-        <button class="button" :class="hasMore ? 'has-more' : ''" @click="scrollToBottom('instant')" v-show="paused">
+        <button
+          class="button has-boxshadow"
+          :class="hasMore ? 'has-more' : ''"
+          @click="scrollToBottom()"
+          v-show="paused"
+        >
           <mdi-light-chevron-double-down />
         </button>
       </transition>
@@ -24,61 +29,46 @@
   </section>
 </template>
 
-<script lang="ts">
-export default {
-  props: {
-    scrollable: {
-      type: Boolean,
-      default: true,
-    },
-  },
+<script lang="ts" setup>
+const { scrollable = false } = defineProps<{ scrollable?: boolean }>();
 
-  name: "ScrollableView",
-  data() {
-    return {
-      paused: false,
-      hasMore: false,
-      loading: false,
-      mutationObserver: null,
-      intersectionObserver: null,
-    };
-  },
-  mounted() {
-    const { scrollableContent } = this.$refs;
-    this.mutationObserver = new MutationObserver((e) => {
-      if (!this.paused) {
-        this.scrollToBottom("instant");
-      } else {
-        const record = e[e.length - 1];
-        if (
-          record.target.children[record.target.children.length - 1] == record.addedNodes[record.addedNodes.length - 1]
-        ) {
-          this.hasMore = true;
-        }
-      }
-    });
-    this.mutationObserver.observe(scrollableContent, { childList: true, subtree: true });
+let paused = $ref(false);
+let hasMore = $ref(false);
+let loading = $ref(false);
+const scrollObserver = ref<HTMLElement>();
+const scrollableContent = ref<HTMLElement>();
 
-    this.intersectionObserver = new IntersectionObserver(
-      (entries) => (this.paused = entries[0].intersectionRatio == 0),
-      { threshholds: [0, 1], rootMargin: "80px 0px" }
-    );
-    this.intersectionObserver.observe(this.$refs.scrollObserver);
-  },
-  beforeUnmount() {
-    this.mutationObserver.disconnect();
-    this.intersectionObserver.disconnect();
-  },
-  methods: {
-    scrollToBottom(behavior = "instant") {
-      this.$refs.scrollObserver.scrollIntoView({ behavior });
-      this.hasMore = false;
-    },
-    setLoading(loading) {
-      this.loading = loading;
-    },
-  },
-};
+provide("scrollingPaused", $$(paused));
+
+const mutationObserver = new MutationObserver((e) => {
+  if (!paused) {
+    scrollToBottom();
+  } else {
+    const record = e[e.length - 1];
+    if (record.target.children[record.target.children.length - 1] == record.addedNodes[record.addedNodes.length - 1]) {
+      hasMore = true;
+    }
+  }
+});
+
+const intersectionObserver = new IntersectionObserver((entries) => (paused = entries[0].intersectionRatio == 0), {
+  threshold: [0, 1],
+  rootMargin: "80px 0px",
+});
+
+onMounted(() => {
+  mutationObserver.observe(scrollableContent.value!, { childList: true, subtree: true });
+  intersectionObserver.observe(scrollObserver.value!);
+});
+
+function scrollToBottom(behavior: "auto" | "smooth" = "auto") {
+  scrollObserver.value?.scrollIntoView({ behavior });
+  hasMore = false;
+}
+
+function setLoading(value: boolean) {
+  loading = value;
+}
 </script>
 <style scoped lang="scss">
 section {
@@ -124,18 +114,18 @@ section {
     button {
       position: fixed;
       bottom: 30px;
-      background-color: var(--secondary-color);
-      transition: background-color 1s ease-out;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+      background-color: var(--primary-color);
+      transition: background-color 0.24s ease-out;
       border: none !important;
-      color: #222;
+      color: #eee;
 
       &.has-more {
-        background-color: var(--primary-color);
+        background-color: var(--secondary-color);
         animation-name: bounce;
         animation-duration: 1000ms;
         animation-fill-mode: both;
-        color: #fff;
+
+        color: #222;
       }
     }
   }

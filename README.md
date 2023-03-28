@@ -2,7 +2,7 @@
 
 Dozzle is a small lightweight application with a web based interface to monitor Docker logs. It doesn’t store any log files. It is for live monitoring of your container logs only.
 
-![Image](https://github.com/amir20/dozzle/blob/master/.github/demo.gif?raw=true)
+https://user-images.githubusercontent.com/260667/227634771-9ebbe381-16a8-465a-b28a-450c5cd20c94.mp4
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/amir20/dozzle)](https://goreportcard.com/report/github.com/amir20/dozzle)
 [![Docker Pulls](https://img.shields.io/docker/pulls/amir20/dozzle.svg)](https://hub.docker.com/r/amir20/dozzle/)
@@ -37,16 +37,7 @@ The simplest way to use dozzle is to run the docker container. Also, mount the D
 
 Dozzle will be available at [http://localhost:8888/](http://localhost:8888/). You can change `-p 8888:8080` to any port. For example, if you want to view dozzle over port 4040 then you would do `-p 4040:8080`.
 
-### With Docker swarm
-
-    docker service create \
-    --name=dozzle \
-    --publish=8888:8080 \
-    --constraint=node.role==manager \
-    --mount=type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
-    amir20/dozzle:latest
-
-### With Docker compose
+### Connecting with Docker compose
 
     version: "3"
     services:
@@ -57,6 +48,56 @@ Dozzle will be available at [http://localhost:8888/](http://localhost:8888/). Yo
           - /var/run/docker.sock:/var/run/docker.sock
         ports:
           - 9999:8080
+
+### Connecting to remote hosts
+
+Dozzle supports connecting to multiple remote hosts via `tcp://` using TLS or without. Appropriate certs need to be mounted for Dozzle to be able to successfully connect. At this point, `ssh://` is not supported because Dozzle docker image does not ship with any ssh clients.
+
+To configure remote hosts, `--remote-host` or `DOZZLE_REMOTE_HOST` need to provided and the `pem` files need to be mounted to `/cert` directory. The `/cert` directory expects to have `/certs/{ca,cert,key}.pem` or `/certs/{host}/{ca,cert,key}.pem` in case of multiple hosts.
+
+Below are examples of using `--remote-host` via CLI:
+
+    $ docker run -v /var/run/docker.sock:/var/run/docker.sock -v /path/to/certs:/certs -p 8080:8080 amir20/dozzle --remote-host tcp://167.99.1.1:2376
+
+Multiple `--remote-host` flags can be used to specify multiple hosts.
+
+Or to use compose:
+
+    version: "3"
+    services:
+      dozzle:
+        image: amir20/dozzle:latest
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+          - /path/to/certs:/certs
+        ports:
+          - 8080:8080
+        environment:
+          DOZZLE_REMOTE_HOST: tcp://167.99.1.1:2376,tcp://167.99.1.2:2376
+
+You need to make sure appropriate certs are provided in `/certs/167.99.1.1/{ca,cert,key}.pem` and `/certs/167.99.1.2/{ca,cert,key}.pem` for both hosts to work.
+
+### Adding health check
+
+Dozzle doesn't enable healthcheck by default as it adds extra CPU usage. `healthcheck` can be enabled manually.
+
+    version: "3"
+    services:
+      dozzle:
+        container_name: dozzle
+        image: amir20/dozzle:latest
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        ports:
+          - 8080:8080
+        environment:
+          DOZZLE_LEVEL: trace
+        healthcheck:
+          test: [ "CMD", "/dozzle", "healthcheck" ]
+          interval: 3s
+          timeout: 30s
+          retries: 5
+          start_period: 30s
 
 #### Security
 
@@ -74,7 +115,7 @@ this would then only allow you to view containers with a name starting with "foo
 
 #### Authentication
 
-Dozzle supports a very simple authentication out of the box with just username and password. You should deploy using SSL to keep the credentials safe. See configuration to use `--username` and `--password`.
+Dozzle supports a very simple authentication out of the box with just username and password. You should deploy using SSL to keep the credentials safe. See configuration to use `--username` and `--password`. You can also use [docker secrets](https://docs.docker.com/engine/swarm/secrets/) `--usernamefile` and `--passwordfile`.
 
 #### Changing base URL
 
@@ -95,17 +136,19 @@ If you do not want to be tracked at all, see the `--no-analytics` flag below.
 
 Dozzle follows the [12-factor](https://12factor.net/) model. Configurations can use the CLI flags or environment variables. The table below outlines all supported options and their respective env vars.
 
-| Flag             | Env Variable          | Default |
-| ---------------- | --------------------- | ------- |
-| `--addr`         | `DOZZLE_ADDR`         | `:8080` |
-| `--base`         | `DOZZLE_BASE`         | `/`     |
-| `--level`        | `DOZZLE_LEVEL`        | `info`  |
-| n/a              | `DOCKER_API_VERSION`  | not set |
-| `--tailSize`     | `DOZZLE_TAILSIZE`     | `300`   |
-| `--filter`       | `DOZZLE_FILTER`       | `""`    |
-| `--username`     | `DOZZLE_USERNAME`     | `""`    |
-| `--password`     | `DOZZLE_PASSWORD`     | `""`    |
-| `--no-analytics` | `DOZZLE_NO_ANALYTICS` | false   |
+| Flag             | Env Variable           | Default |
+| ---------------- | ---------------------- | ------- |
+| `--addr`         | `DOZZLE_ADDR`          | `:8080` |
+| `--base`         | `DOZZLE_BASE`          | `/`     |
+| `--hostname`     | `DOZZLE_HOSTNAME`      | `""`    |
+| `--level`        | `DOZZLE_LEVEL`         | `info`  |
+| `--filter`       | `DOZZLE_FILTER`        | `""`    |
+| `--username`     | `DOZZLE_USERNAME`      | `""`    |
+| `--password`     | `DOZZLE_PASSWORD`      | `""`    |
+| `--usernamefile` | `DOZZLE_USERNAME_FILE` | `""`    |
+| `--passwordfile` | `DOZZLE_PASSWORD_FILE` | `""`    |
+| `--no-analytics` | `DOZZLE_NO_ANALYTICS`  | false   |
+| `--remote-host`  | `DOZZLE_REMOTE_HOST`   |         |
 
 ## Troubleshooting and FAQs
 
@@ -154,6 +197,28 @@ Dozzle opens all links with `rel="noopener"`.
  <summary>We have tools that uses Dozzle when a new container is created. How can I get a direct link to a container by name?</summary>
 
 Dozzle has a [special route](https://github.com/amir20/dozzle/blob/master/assets/pages/Show.vue) that can be used to search containers by name and then forward to that container. For example, if you have a container with name `"foo.bar"` and id `abc123`, you can send your users to `/show?name=foo.bar` which will be forwarded to `/container/abc123`.
+
+</details>
+
+<details>
+ <summary>I installed Dozzle but memory consumption doesn't show up!</summary>
+
+_This is an issue specific to ARM devices_
+
+Dozzle uses the Docker API to gather information about the containers' memory usage. If the memory usage is not showing up, then it is likely that the Docker API is not returning the memory usage.
+
+You can verify this by running `docker info`, and you should see the following:
+
+```
+WARNING: No memory limit support
+WARNING: No swap limit support
+```
+
+In this case, you'll need to add the following line to your `/boot/cmdline.txt` file and reboot your device.
+
+```
+cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1
+```
 
 </details>
 

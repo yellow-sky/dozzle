@@ -1,44 +1,21 @@
 <template>
-  <time :datetime="date.toISOString()">{{ relativeTime(date, locale) }}</time>
+  <div>
+    <time :datetime="date.toISOString()" class="is-hidden-mobile">{{ dateStr }}</time>
+    <time :datetime="date.toISOString()">{{ timeStr }}</time>
+  </div>
 </template>
 
-<script lang="ts">
-const use24Hr =
-  new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-  })
-    .formatToParts(new Date(2020, 0, 1, 13))
-    .find((part) => part.type === "hour")?.value.length === 2;
-
-const auto = use24Hr ? enGB : enUS;
-const styles = { auto, 12: enUS, 24: enGB };
-</script>
-
 <script lang="ts" setup>
-import { formatRelative } from "date-fns";
-import { hourStyle } from "@/composables/settings";
-import enGB from "date-fns/locale/en-GB";
-import enUS from "date-fns/locale/en-US";
-import { computed, PropType } from "vue";
-defineProps({
-  date: {
-    required: true,
-    type: Object as PropType<Date>,
-  },
-});
+const props = defineProps<{
+  date: Date;
+}>();
 
-const locale = computed(() => {
-  const locale = styles[hourStyle.value];
-  const oldFormatter = locale.formatRelative as (d: Date | number) => string;
-  return {
-    ...locale,
-    formatRelative(date: Date | number) {
-      return oldFormatter(date) + "p";
-    },
-  };
-});
+const dateFormatter = new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "2-digit", year: "numeric" });
+const use12Hour = $computed(() => ({ auto: undefined, "12": true, "24": false }[hourStyle.value]));
+const timeFormatter = $computed(
+  () => new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: use12Hour })
+);
 
-function relativeTime(date: Date, locale: Locale) {
-  return formatRelative(date, new Date(), { locale });
-}
+const dateStr = $computed(() => dateFormatter.format(props.date));
+const timeStr = $computed(() => timeFormatter.format(props.date));
 </script>

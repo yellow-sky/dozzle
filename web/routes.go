@@ -6,8 +6,11 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"path"
+	"strings"
 
+	"github.com/amir20/dozzle/analytics"
 	"github.com/amir20/dozzle/docker"
 
 	"github.com/gorilla/mux"
@@ -16,24 +19,25 @@ import (
 
 // Config is a struct for configuring the web service
 type Config struct {
-	Base     string
-	Addr     string
-	Version  string
-	TailSize int
-	Username string
-	Password string
+	Base        string
+	Addr        string
+	Version     string
+	Username    string
+	Password    string
+	Hostname    string
+	NoAnalytics bool
 }
 
 type handler struct {
-	client  docker.Client
+	clients map[string]docker.Client
 	content fs.FS
 	config  *Config
 }
 
 // CreateServer creates a service for http handler
-func CreateServer(c docker.Client, content fs.FS, config Config) *http.Server {
+func CreateServer(clients map[string]docker.Client, content fs.FS, config Config) *http.Server {
 	handler := &handler{
-		client:  c,
+		clients: clients,
 		content: content,
 		config:  &config,
 	}
@@ -63,10 +67,7 @@ func createRouter(h *handler) *mux.Router {
 	s.HandleFunc("/api/validateCredentials", h.validateCredentials)
 	s.Handle("/logout", authorizationRequired(h.clearSession))
 	s.Handle("/version", authorizationRequired(h.version))
-
-	if log.IsLevelEnabled(log.DebugLevel) {
-		s.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
-	}
+	s.HandleFunc("/healthcheck", h.healthcheck)
 
 	if base != "/" {
 		s.PathPrefix("/").Handler(http.StripPrefix(base+"/", http.HandlerFunc(h.index)))
@@ -83,6 +84,28 @@ func (h *handler) index(w http.ResponseWriter, req *http.Request) {
 	_, err := h.content.Open(req.URL.Path)
 	if err == nil && req.URL.Path != "" && req.URL.Path != "/" {
 		fileServer.ServeHTTP(w, req)
+		if !h.config.NoAnalytics {
+			go func() {
+				host, _ := os.Hostname()
+
+				if containers, err := h.clients["localhost"].ListContainers(); err == nil {
+					totalContainers := len(containers)
+					runningContainers := 0
+					for _, container := range containers {
+						if container.State == "running" {
+							runningContainers++
+						}
+					}
+
+					re := analytics.RequestEvent{
+						ClientId:          host,
+						TotalContainers:   totalContainers,
+						RunningContainers: runningContainers,
+					}
+					analytics.SendRequestEvent(re)
+				}
+			}()
+		}
 	} else {
 		if !isAuthorized(req) && req.URL.Path != "login" {
 			http.Redirect(w, req, path.Clean(h.config.Base+"/login"), http.StatusTemporaryRedirect)
@@ -111,16 +134,26 @@ func (h *handler) executeTemplate(w http.ResponseWriter, req *http.Request) {
 		path = h.config.Base
 	}
 
+	// Get all keys from hosts map
+	hosts := make([]string, 0, len(h.clients))
+	for k := range h.clients {
+		hosts = append(hosts, k)
+	}
+
 	data := struct {
 		Base                string
 		Version             string
 		AuthorizationNeeded bool
 		Secured             bool
+		Hostname            string
+		Hosts               string
 	}{
 		path,
 		h.config.Version,
 		h.isAuthorizationNeeded(req),
 		secured,
+		h.config.Hostname,
+		strings.Join(hosts, ","),
 	}
 	err = tmpl.Execute(w, data)
 	if err != nil {
@@ -132,4 +165,23 @@ func (h *handler) executeTemplate(w http.ResponseWriter, req *http.Request) {
 func (h *handler) version(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "text/html")
 	fmt.Fprintf(w, "<pre>%v</pre>", h.config.Version)
+}
+
+func (h *handler) healthcheck(w http.ResponseWriter, r *http.Request) {
+	log.Trace("Executing healthcheck request")
+
+	if ping, err := h.clients["localhost"].Ping(r.Context()); err != nil {
+		log.Error(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	} else {
+		fmt.Fprintf(w, "OK API Version %v", ping.APIVersion)
+	}
+}
+
+func (h *handler) clientFromRequest(r *http.Request) docker.Client {
+	host := r.URL.Query().Get("host")
+	if client, ok := h.clients[host]; ok {
+		return client
+	}
+	return h.clients["localhost"]
 }

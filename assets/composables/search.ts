@@ -1,21 +1,41 @@
-import { ref, computed, Ref } from "vue";
+import { type Ref } from "vue";
+import { type LogEntry, type JSONObject, SimpleLogEntry, ComplexLogEntry } from "@/models/LogEntry";
 
 const searchFilter = ref<string>("");
+const debouncedSearchFilter = useDebounce(searchFilter);
 const showSearch = ref(false);
 
-import type { LogEntry } from "@/types/LogEntry";
+function matchRecord(record: Record<string, any>, regex: RegExp): boolean {
+  for (const key in record) {
+    const value = record[key];
+    if (typeof value === "string" && regex.test(value)) {
+      return true;
+    }
+    if (Array.isArray(value) && matchRecord(value, regex)) {
+      return true;
+    }
+  }
+  return false;
+}
 
 export function useSearchFilter() {
   const regex = computed(() => {
-    const isSmartCase = searchFilter.value === searchFilter.value.toLowerCase();
-    return isSmartCase ? new RegExp(searchFilter.value, "i") : new RegExp(searchFilter.value);
+    const isSmartCase = debouncedSearchFilter.value === debouncedSearchFilter.value.toLowerCase();
+    return isSmartCase ? new RegExp(debouncedSearchFilter.value, "i") : new RegExp(debouncedSearchFilter.value);
   });
 
-  function filteredMessages(messages: Ref<LogEntry[]>) {
+  function filteredMessages(messages: Ref<LogEntry<string | JSONObject>[]>) {
     return computed(() => {
-      if (searchFilter && searchFilter.value) {
+      if (debouncedSearchFilter.value && showSearch.value) {
         try {
-          return messages.value.filter((d) => d.message.match(regex.value));
+          return messages.value.filter((d) => {
+            if (d instanceof SimpleLogEntry) {
+              return regex.value.test(d.message);
+            } else if (d instanceof ComplexLogEntry) {
+              return matchRecord(d.message, regex.value);
+            }
+            return false;
+          });
         } catch (e) {
           if (e instanceof SyntaxError) {
             console.info(`Ignoring SyntaxError from search.`, e);
@@ -29,11 +49,17 @@ export function useSearchFilter() {
     });
   }
 
-  function markSearch(log: string) {
-    if (searchFilter && searchFilter.value) {
-      return log.replace(regex.value, `<mark>$&</mark>`);
+  function markSearch(log: { toString(): string }): string;
+  function markSearch(log: string[]): string[];
+  function markSearch(log: { toString(): string } | string[]) {
+    if (!debouncedSearchFilter.value) {
+      return log;
     }
-    return log;
+    if (Array.isArray(log)) {
+      return log.map((d) => markSearch(d));
+    }
+
+    return log.toString().replace(regex.value, (match) => `<mark>${match}</mark>`);
   }
 
   function resetSearch() {
