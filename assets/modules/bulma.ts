@@ -9,6 +9,7 @@ import {
   Field,
   Tooltip,
   Modal,
+  Notification,
   Config,
 } from "@oruga-ui/oruga-next";
 import { bulmaConfig } from "@oruga-ui/theme-bulma";
@@ -21,6 +22,7 @@ export const install = (app: App) => {
     .use(Switch)
     .use(Tooltip)
     .use(Modal)
+    .use(Notification)
     .use(Radio)
     .use(Field)
     .use(Skeleton)

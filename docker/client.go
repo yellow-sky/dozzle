@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"os"
 	"path/filepath"
-	"io/ioutil"
 	"sort"
 	"strconv"
 	"strings"
@@ -34,7 +35,7 @@ type dockerProxy interface {
 	ContainerInspect(ctx context.Context, containerID string) (types.ContainerJSON, error)
 	ContainerStats(ctx context.Context, containerID string, stream bool) (types.ContainerStats, error)
 	Ping(ctx context.Context) (types.Ping, error)
-	ContainerRestart(ctx context.Context, containerID string, timeout *time.Duration) error
+	ContainerRestart(ctx context.Context, containerID string, options container.StopOptions) error
 	ImagePull(ctx context.Context, refStr string, options types.ImagePullOptions) (io.ReadCloser, error)
 }
 
@@ -47,7 +48,7 @@ type Client interface {
 	ContainerLogsBetweenDates(context.Context, string, time.Time, time.Time) (io.ReadCloser, error)
 	ContainerStats(context.Context, string, chan<- ContainerStat) error
 	Ping(context.Context) (types.Ping, error)
-	ContainerRestart(context.Context, string, *time.Duration) error
+	ContainerRestart(context.Context, string, *int)
 	ContainerImagePull(context.Context, string, *time.Duration) ([]byte, error)
 }
 
@@ -217,7 +218,7 @@ func (d *dockerClient) ContainerStats(ctx context.Context, id string, stats chan
 				case <-ctx.Done():
 					return
 				case stats <- ContainerStat{
-					ID:          meteo_filter_2215  id,
+					ID:            id,
 					CPUPercent:    cpuPercent,
 					MemoryPercent: memPercent,
 					MemoryUsage:   memUsage,
@@ -322,8 +323,8 @@ func (d *dockerClient) Ping(ctx context.Context) (types.Ping, error) {
 	return d.cli.Ping(ctx)
 }
 
-func (d *dockerClient) ContainerRestart(ctx context.Context, id string, timeout *time.Duration) error {
-	return d.cli.ContainerRestart(ctx, id, timeout)
+func (d *dockerClient) ContainerRestart(ctx context.Context, id string, timeout *int) {
+	d.cli.ContainerRestart(ctx, id, container.StopOptions{Timeout: timeout})
 }
 
 func (d *dockerClient) ContainerImagePull(ctx context.Context, id string, timeout *time.Duration) ([]byte, error) {

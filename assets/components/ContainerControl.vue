@@ -12,6 +12,7 @@
 <script lang="ts" setup>
 import config from "@/stores/config";
 import { useProgrammatic } from "@oruga-ui/oruga-next";
+
 const { oruga } = useProgrammatic();
 
 const props = defineProps({
