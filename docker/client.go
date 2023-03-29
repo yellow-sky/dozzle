@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -168,6 +169,7 @@ func (d *dockerClient) ListContainers() ([]Container, error) {
 			Created: c.Created,
 			State:   c.State,
 			Status:  c.Status,
+			Health:  findBetweenParentheses(c.Status),
 		}
 		containers = append(containers, container)
 	}
@@ -340,4 +342,13 @@ func (d *dockerClient) ContainerImagePull(ctx context.Context, id string, timeou
 		return logBytes, err
 	}
 	return []byte{}, err
+}
+
+var PARENTHESIS_RE = regexp.MustCompile(`\(([^)]+)\)`)
+
+func findBetweenParentheses(s string) string {
+	if results := PARENTHESIS_RE.FindStringSubmatch(s); results != nil {
+		return results[1]
+	}
+	return ""
 }

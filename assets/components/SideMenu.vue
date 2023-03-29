@@ -19,7 +19,7 @@
               <o-button variant="primary" type="button" size="small">
                 <span>{{ sessionHost }}</span>
                 <span class="icon">
-                  <carbon-caret-down />
+                  <carbon:caret-down />
                 </span>
               </o-button>
             </template>
@@ -35,21 +35,21 @@
       <div class="column is-narrow py-0 pl-0 pr-1">
         <button class="button is-rounded is-small" @click="$emit('search')" :title="$t('tooltip.search')">
           <span class="icon">
-            <mdi-light-magnify />
+            <mdi:light-magnify />
           </span>
         </button>
       </div>
       <div class="column is-narrow py-0" :class="secured ? 'pl-0 pr-1' : 'px-0'">
         <router-link :to="{ name: 'settings' }" active-class="is-active" class="button is-rounded is-small">
           <span class="icon">
-            <mdi-light-cog />
+            <mdi:light-cog />
           </span>
         </router-link>
       </div>
       <div class="column is-narrow py-0 px-0" v-if="secured">
         <a class="button is-rounded is-small" :href="`${base}/logout`" :title="$t('button.logout')">
           <span class="icon">
-            <mdi-light-logout />
+            <mdi:light-logout />
           </span>
         </a>
       </div>
@@ -66,14 +66,18 @@
             <div class="is-flex-grow-1 is-ellipsis">
               {{ item.name }}
             </div>
-            <div class="is-flex-shrink-1 column-icon">
+            <div class="is-flex-shrink-1 is-flex icons">
               <span
-                class="icon is-small"
+                class="icon is-small pin"
                 @click.stop.prevent="store.appendActiveContainer(item)"
                 v-show="!activeContainersById[item.id]"
                 :title="$t('tooltip.pin-column')"
               >
-                <cil-columns />
+                <cil:columns />
+              </span>
+
+              <span class="icon is-small health" :health="item.health" v-if="item.health">
+                <cil:check-circle />
               </span>
             </div>
           </div>
@@ -115,6 +119,12 @@ aside {
   }
 }
 
+.logo {
+  width: 122px;
+  height: 54px;
+  fill: var(--logo-color);
+}
+
 .loading {
   opacity: 0.5;
 }
@@ -123,26 +133,32 @@ li.exited a {
   color: #777;
 }
 
-.logo {
-  width: 122px;
-  height: 54px;
-  fill: var(--logo-color);
-}
-
-.menu-list li {
-  .column-icon {
-    visibility: hidden;
-
-    & > span {
-      vertical-align: middle;
-    }
+.health {
+  &[health="unhealthy"] {
+    color: var(--red-color);
   }
 
-  &:hover .column-icon {
-    visibility: visible;
+  &[health="healthy"] {
+    color: var(--green-color);
+  }
+}
+
+a {
+  .pin {
+    display: none;
 
     &:hover {
       color: var(--secondary-color);
+    }
+  }
+
+  &:hover {
+    .pin {
+      display: block;
+    }
+
+    .health {
+      display: none;
     }
   }
 }

@@ -48,7 +48,7 @@
                 @keyup.enter="onEnter()"
               />
               <span class="icon is-left">
-                <search-icon />
+                <mdi:light-magnify />
               </span>
             </p>
           </div>
@@ -65,7 +65,7 @@
             <span class="name">{{ item.name }}</span>
 
             <div class="subtitle is-7 status">
-              <past-time :date="new Date(item.created * 1000)"></past-time>
+              <past-time :date="item.created"></past-time>
             </div>
           </router-link>
         </div>
@@ -75,7 +75,6 @@
 </template>
 
 <script lang="ts" setup>
-import SearchIcon from "~icons/mdi-light/magnify";
 import { useFuse } from "@vueuse/integrations/useFuse";
 
 const { version } = config;
@@ -86,7 +85,7 @@ const router = useRouter();
 const sort = $ref("running");
 const query = ref("");
 
-const mostRecentContainers = $computed(() => [...containers.value].sort((a, b) => b.created - a.created));
+const mostRecentContainers = $computed(() => [...containers.value].sort((a, b) => +b.created - +a.created));
 const runningContainers = $computed(() => mostRecentContainers.filter((c) => c.state === "running"));
 
 const list = computed(() => {
@@ -147,17 +146,21 @@ function onEnter() {
 <style lang="scss" scoped>
 .panel {
   border: 1px solid var(--border-color);
+
   .panel-block,
   .panel-tabs {
     border-color: var(--border-color);
+
     .is-active {
       border-color: var(--border-hover-color);
     }
+
     .name {
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
     }
+
     .status {
       margin-left: auto;
       white-space: nowrap;

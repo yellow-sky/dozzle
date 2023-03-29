@@ -8,8 +8,8 @@
           </svg>
         </router-link>
       </div>
-      <div class="column ml-4 is-family-monospace is-ellipsis" v-if="$route.name == 'container'">
-        {{ allContainersById[route.params.id].name }}
+      <div class="column ml-4 is-family-monospace is-ellipsis" v-if="$route.name == 'container-id'">
+        {{ allContainersById[route.params.id as string].name }}
       </div>
 
       <div class="column is-narrow push-right">
@@ -29,7 +29,7 @@
         <div>
           <button class="button is-small is-rounded" @click="$emit('search')" :title="$t('tooltip.search')">
             <span class="icon">
-              <mdi-light-magnify />
+              <mdi:light-magnify />
             </span>
           </button>
         </div>
@@ -38,7 +38,7 @@
         <div>
           <router-link :to="{ name: 'settings' }" active-class="is-active" class="button is-small is-rounded">
             <span class="icon">
-              <mdi-light-cog />
+              <mdi:light-cog />
             </span>
           </router-link>
         </div>
@@ -47,7 +47,7 @@
         <div>
           <a class="button is-small is-rounded" :href="`${base}/logout`" :title="$t('button.logout')">
             <span class="icon">
-              <mdi-light-logout />
+              <mdi:light-logout />
             </span>
           </a>
         </div>
